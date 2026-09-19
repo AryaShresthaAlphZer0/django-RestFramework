@@ -6,9 +6,16 @@ from .models import User
 from .serializer import UserSerializer
 # Create your views here.
 
+# @api_view(['GET'])
+# def get_user(request):
+#     return Response(UserSerializer({'name': "pedro", 'age':23}).data)
+
 @api_view(['GET'])
 def get_user(request):
-    return Response(UserSerializer({'name': "pedro", 'age':23}).data)
+    user = User.objects.all()
+    serializer = UserSerializer(user, many=True)
+    return Response(serializer.data)
+
 @api_view(['POST'])
 def create_user(request):
     serializer = UserSerializer(data=request.data)
