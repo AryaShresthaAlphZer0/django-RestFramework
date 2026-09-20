@@ -2,45 +2,78 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User
+from .models import Users
 from .serializer import UserSerializer
-# Create your views here.
 
-# @api_view(['GET'])
-# def get_user(request):
-#     return Response(UserSerializer({'name': "pedro", 'age':23}).data)
-
-@api_view(['GET'])
-def get_user(request):
-    user = User.objects.all()
-    serializer = UserSerializer(user, many=True)
-    return Response(serializer.data)
 
 @api_view(['POST'])
-def create_user(request):
+def Register(request):
     serializer = UserSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-@api_view(['GET', 'PUT', 'DELETE'])
-def user_detail(request, pk):
+    return Response(serializer.errors, status=status.HTTP_40_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def Login(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+
     try:
-        user = User.objects.get(pk=pk)
-    except User.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        user = Users.objects.get(email=email)
+    except Users.DoesNotExist:
+        return Response(
+            {'error': 'Invalid email or password'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
-    if request.method == 'GET':
-        serializer = UserSerializer(user)
-        return Response(serializer.data)
+    if user.password == password:
 
-    elif request.method == 'PUT':
-        serializer = UserSerializer(user, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Remember logged-in user
+        request.session['user_id'] = user.id
 
-    elif request.method == 'DELETE':
-        user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'message': 'Login successful'
+        }, status=status.HTTP_200_OK)
+
+    return Response(
+        {'error': 'Invalid email or password'},
+        status=status.HTTP_401_UNAUTHORIZED
+    )
+
+@api_view(['POST'])
+def Logout(request):
+
+    request.session.flush()
+
+    return Response({
+        'message': 'Logout successful'
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def CurrentUser(request):
+
+    user_id = request.session.get('user_id')
+
+    if not user_id:
+        return Response(
+            {'error': 'Not logged in'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    try:
+        user = Users.objects.get(id=user_id)
+    except Users.DoesNotExist:
+        return Response(
+            {'error': 'User not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    return Response({
+        'id': user.id,
+        'name': user.name,
+        'age': user.age,
+        'address': user.address,
+        'email': user.email
+    })
